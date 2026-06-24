@@ -4,7 +4,7 @@
   "description": "MERN Stack Food Donation Web Application",
   "private": true,
   "scripts": {
-    "install-all": "npm install && npm install --workspace=backend && npm install --workspace=frontend",
-    "dev": "npm run dev --workspace=backend & npm run dev --workspace=frontend"
+    "dev": "echo 'Run from backend and frontend directories separately'",
+    "build": "cd frontend && npm run build"
   }
 }
