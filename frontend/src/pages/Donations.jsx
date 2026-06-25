@@ -176,9 +176,20 @@ export default function Donations() {
                     <Calendar size={16} />
                     <span>Expires: {formatDate(donation.expiryDate)}</span>
                   </div>
-                  <p className="font-semibold text-primary-600">
-                    {donation.quantity} {donation.unit}
-                  </p>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-gray-500">Total</p>
+                      <p className="font-semibold text-primary-600">
+                        {donation.totalQuantity || donation.quantity} {donation.unit}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Available</p>
+                      <p className="font-semibold text-green-600">
+                        {donation.remainingQuantity || donation.totalQuantity || donation.quantity} {donation.unit}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 pt-4 border-t">

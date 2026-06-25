@@ -85,33 +85,36 @@ export default function CreateDonation() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Quantity</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  name="totalQuantity"
-                  value={formData.totalQuantity}
-                  onChange={handleChange}
-                  className="input-field flex-1"
-                  placeholder="10"
-                  min="0.1"
-                  step="0.1"
-                  required
-                />
-                <select
-                  name="unit"
-                  value={formData.unit}
-                  onChange={handleChange}
-                  className="input-field"
-                  style={{ minWidth: '100px' }}
-                >
-                  <option value="kg">kg</option>
-                  <option value="liters">liters</option>
-                  <option value="packs">packs</option>
-                  <option value="plates">plates</option>
-                  <option value="pieces">pieces</option>
-                  <option value="boxes">boxes</option>
-                </select>
+              <label className="block text-sm font-medium mb-2">Quantity & Unit</label>
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    name="totalQuantity"
+                    value={formData.totalQuantity}
+                    onChange={handleChange}
+                    className="input-field w-full"
+                    placeholder="Enter quantity"
+                    min="0.1"
+                    step="0.1"
+                    required
+                  />
+                </div>
+                <div className="w-32">
+                  <select
+                    name="unit"
+                    value={formData.unit}
+                    onChange={handleChange}
+                    className="input-field w-full"
+                  >
+                    <option value="kg">kg</option>
+                    <option value="liters">liters</option>
+                    <option value="packs">packs</option>
+                    <option value="plates">plates</option>
+                    <option value="pieces">pieces</option>
+                    <option value="boxes">boxes</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
