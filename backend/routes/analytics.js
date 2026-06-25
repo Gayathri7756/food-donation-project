@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Donation from '../models/Donation.js';
 import Request from '../models/Request.js';
 import User from '../models/User.js';
@@ -46,7 +47,7 @@ router.get('/donor/dashboard', protect, async (req, res) => {
 
     // Total quantity donated and remaining
     const donationStats = await Donation.aggregate([
-      { $match: { donor: require('mongoose').Types.ObjectId(userId) } },
+      { $match: { donor: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: null,
@@ -59,7 +60,7 @@ router.get('/donor/dashboard', protect, async (req, res) => {
 
     // Donations by type
     const donationsByType = await Donation.aggregate([
-      { $match: { donor: require('mongoose').Types.ObjectId(userId) } },
+      { $match: { donor: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: '$foodType',
@@ -70,7 +71,7 @@ router.get('/donor/dashboard', protect, async (req, res) => {
 
     // Donations by month
     const donationsByMonth = await Donation.aggregate([
-      { $match: { donor: require('mongoose').Types.ObjectId(userId) } },
+      { $match: { donor: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: {
@@ -138,7 +139,7 @@ router.get('/receiver/dashboard', protect, async (req, res) => {
 
     // Total quantity received and claimed
     const requestStats = await Request.aggregate([
-      { $match: { receiver: require('mongoose').Types.ObjectId(userId) } },
+      { $match: { receiver: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: null,
@@ -150,7 +151,7 @@ router.get('/receiver/dashboard', protect, async (req, res) => {
 
     // Requests by status
     const requestsByStatus = await Request.aggregate([
-      { $match: { receiver: require('mongoose').Types.ObjectId(userId) } },
+      { $match: { receiver: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: '$status',
@@ -161,7 +162,7 @@ router.get('/receiver/dashboard', protect, async (req, res) => {
 
     // Requests by month
     const requestsByMonth = await Request.aggregate([
-      { $match: { receiver: require('mongoose').Types.ObjectId(userId) } },
+      { $match: { receiver: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: {
@@ -203,9 +204,9 @@ router.get('/donation-history', protect, async (req, res) => {
     let filter = {};
 
     if (role === 'donor') {
-      filter.donor = require('mongoose').Types.ObjectId(req.user.id);
+      filter.donor = new mongoose.Types.ObjectId(req.user.id);
     } else if (role === 'receiver') {
-      filter.acceptedBy = require('mongoose').Types.ObjectId(req.user.id);
+      filter.acceptedBy = new mongoose.Types.ObjectId(req.user.id);
     }
 
     if (status) filter.status = status;

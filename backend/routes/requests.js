@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Request from '../models/Request.js';
 import Donation from '../models/Donation.js';
 import User from '../models/User.js';
@@ -112,7 +113,7 @@ router.get('/donor/my-requests', protect, authorize('donor', 'admin'), async (re
 });
 
 // Accept request (donor approves the claim)
-router.post('/:id/accept', protect, authorize('donor', 'admin'), async (req, res) => {
+router.post('/:id/accept', protect, async (req, res) => {
   try {
     const request = await Request.findById(req.params.id).populate('donation receiver donor');
 
@@ -120,7 +121,10 @@ router.post('/:id/accept', protect, authorize('donor', 'admin'), async (req, res
       return res.status(404).json({ message: 'Request not found' });
     }
 
-    if (request.donor.toString() !== req.user.id && req.user.role !== 'admin') {
+    const donorId = request.donor._id ? request.donor._id.toString() : request.donor;
+    const userId = req.user.id.toString ? req.user.id.toString() : req.user.id;
+
+    if (donorId !== userId && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -143,15 +147,18 @@ router.post('/:id/accept', protect, authorize('donor', 'admin'), async (req, res
 });
 
 // Reject request
-router.post('/:id/reject', protect, authorize('donor', 'admin'), async (req, res) => {
+router.post('/:id/reject', protect, async (req, res) => {
   try {
-    const request = await Request.findById(req.params.id).populate('donation');
+    const request = await Request.findById(req.params.id).populate('donation donor');
 
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
 
-    if (request.donor.toString() !== req.user.id && req.user.role !== 'admin') {
+    const donorId = request.donor._id ? request.donor._id.toString() : request.donor;
+    const userId = req.user.id.toString ? req.user.id.toString() : req.user.id;
+
+    if (donorId !== userId && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -215,24 +222,38 @@ router.post('/:id/rate', protect, async (req, res) => {
   try {
     const { rating, review } = req.body;
 
-    const request = await Request.findById(req.params.id);
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+
+    const request = await Request.findById(req.params.id).populate('donor');
 
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
 
-    if (request.receiver.toString() !== req.user.id) {
+    if (request.receiver.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Only receiver can rate' });
     }
 
+    if (request.status !== 'Completed') {
+      return res.status(400).json({ message: 'Can only rate completed requests' });
+    }
+
     request.rating = rating;
-    request.review = review;
+    request.review = review || '';
     await request.save();
 
-    // Update donor rating
-    const allRequests = await Request.find({ donor: request.donor, rating: { $exists: true, $ne: null } });
-    const avgRating = allRequests.reduce((sum, r) => sum + r.rating, 0) / allRequests.length;
-    await User.findByIdAndUpdate(request.donor, { rating: avgRating });
+    // Update donor rating - calculate average
+    const allRequests = await Request.find({ 
+      donor: request.donor._id, 
+      rating: { $exists: true, $ne: null } 
+    });
+    
+    if (allRequests.length > 0) {
+      const avgRating = allRequests.reduce((sum, r) => sum + r.rating, 0) / allRequests.length;
+      await User.findByIdAndUpdate(request.donor._id, { rating: avgRating });
+    }
 
     res.json({ success: true, request });
   } catch (error) {
