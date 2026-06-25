@@ -64,14 +64,14 @@ export default function ReceiverDashboard() {
           {
             icon: <TrendingUp size={32} />,
             label: 'Total Received',
-            value: `${analytics?.totalQuantityReceived || 0} kg`,
+            value: `${(analytics?.totalQuantityReceived || 0).toFixed(1)} kg`,
             color: 'blue',
           },
         ].map((stat, idx) => (
           <div key={idx} className="card">
             <div className={`text-${stat.color}-600 mb-4`}>{stat.icon}</div>
             <p className="text-gray-600 text-sm">{stat.label}</p>
-            <p className="text-3xl font-bold text-dark-900">{stat.value}</p>
+            <p className="text-2xl font-bold text-dark-900">{stat.value}</p>
           </div>
         ))}
       </div>

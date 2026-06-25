@@ -174,8 +174,8 @@ export default function MyRequests() {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
                 <div>
-                  <p className="text-gray-600">Requested</p>
-                  <p className="font-semibold">{request.requestedQuantity} kg</p>
+                  <p className="text-gray-600">Claimed</p>
+                  <p className="font-semibold">{request.claimedQuantity} kg</p>
                 </div>
                 {request.acceptedQuantity && (
                   <div>

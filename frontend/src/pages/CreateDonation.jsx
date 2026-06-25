@@ -94,6 +94,7 @@ export default function CreateDonation() {
                   onChange={handleChange}
                   className="input-field flex-1"
                   placeholder="10"
+                  min="0.1"
                   step="0.1"
                   required
                 />
@@ -101,7 +102,8 @@ export default function CreateDonation() {
                   name="unit"
                   value={formData.unit}
                   onChange={handleChange}
-                  className="input-field w-24"
+                  className="input-field"
+                  style={{ minWidth: '100px' }}
                 >
                   <option value="kg">kg</option>
                   <option value="liters">liters</option>
