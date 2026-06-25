@@ -2,12 +2,15 @@ import mongoose from 'mongoose';
 
 const analyticsSchema = new mongoose.Schema(
   {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
     totalDonations: {
+      type: Number,
+      default: 0,
+    },
+    totalDonors: {
+      type: Number,
+      default: 0,
+    },
+    totalReceivers: {
       type: Number,
       default: 0,
     },
@@ -15,7 +18,11 @@ const analyticsSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    completedDonations: {
+    totalQuantityDistributed: {
+      type: Number,
+      default: 0,
+    },
+    totalQuantityRemaining: {
       type: Number,
       default: 0,
     },

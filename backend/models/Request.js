@@ -19,12 +19,18 @@ const requestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending', 'Accepted', 'Rejected', 'Completed'],
+      enum: ['Pending', 'Accepted', 'Rejected', 'Completed', 'Cancelled'],
       default: 'Pending',
     },
     message: String,
-    requestedQuantity: Number,
-    acceptedQuantity: Number,
+    claimedQuantity: {
+      type: Number,
+      required: true,
+    },
+    acceptedQuantity: {
+      type: Number,
+      default: null,
+    },
     pickupDate: Date,
     pickupTime: String,
     completedAt: Date,

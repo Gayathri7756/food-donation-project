@@ -2,9 +2,27 @@ import express from 'express';
 import Donation from '../models/Donation.js';
 import Request from '../models/Request.js';
 import User from '../models/User.js';
+import Analytics from '../models/Analytics.js';
 import { protect } from '../middleware/auth.js';
+import { updateGlobalAnalytics, updateUserAnalytics } from '../services/analyticsService.js';
 
 const router = express.Router();
+
+// Get global analytics
+router.get('/global', async (req, res) => {
+  try {
+    const analytics = await Analytics.findOne({ _id: 'global' });
+    
+    if (!analytics) {
+      const updated = await updateGlobalAnalytics();
+      return res.json({ success: true, analytics: updated });
+    }
+
+    res.json({ success: true, analytics });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // Get donor dashboard analytics
 router.get('/donor/dashboard', protect, async (req, res) => {
@@ -14,25 +32,27 @@ router.get('/donor/dashboard', protect, async (req, res) => {
     // Total donations
     const totalDonations = await Donation.countDocuments({ donor: userId });
 
-    // Active donations
+    // Active donations (Pending or Partially Claimed)
     const activeDonations = await Donation.countDocuments({
       donor: userId,
-      status: 'Pending',
+      status: { $in: ['Pending', 'Partially Claimed'] },
     });
 
-    // Completed donations
-    const completedDonations = await Donation.countDocuments({
+    // Fully claimed donations
+    const fullyClaimedDonations = await Donation.countDocuments({
       donor: userId,
-      status: 'Completed',
+      status: 'Fully Claimed',
     });
 
-    // Total quantity donated
+    // Total quantity donated and remaining
     const donationStats = await Donation.aggregate([
       { $match: { donor: require('mongoose').Types.ObjectId(userId) } },
       {
         $group: {
           _id: null,
-          totalQuantity: { $sum: '$quantity' },
+          totalQuantityDonated: { $sum: '$totalQuantity' },
+          totalQuantityRemaining: { $sum: '$remainingQuantity' },
+          totalQuantityClaimed: { $sum: '$claimedQuantity' },
         },
       },
     ]);
@@ -58,7 +78,7 @@ router.get('/donor/dashboard', protect, async (req, res) => {
             month: { $month: '$createdAt' },
           },
           count: { $sum: 1 },
-          quantity: { $sum: '$quantity' },
+          totalQuantity: { $sum: '$totalQuantity' },
         },
       },
       { $sort: { '_id.year': -1, '_id.month': -1 } },
@@ -73,14 +93,17 @@ router.get('/donor/dashboard', protect, async (req, res) => {
     });
 
     const user = await User.findById(userId);
+    const stats = donationStats[0] || {};
 
     res.json({
       success: true,
       analytics: {
         totalDonations,
         activeDonations,
-        completedDonations,
-        totalQuantityDonated: donationStats[0]?.totalQuantity || 0,
+        fullyClaimedDonations,
+        totalQuantityDonated: stats.totalQuantityDonated || 0,
+        totalQuantityRemaining: stats.totalQuantityRemaining || 0,
+        totalQuantityClaimed: stats.totalQuantityClaimed || 0,
         requestsReceived,
         requestsAccepted,
         rating: user.rating,
@@ -113,13 +136,14 @@ router.get('/receiver/dashboard', protect, async (req, res) => {
       status: 'Completed',
     });
 
-    // Total quantity received
+    // Total quantity received and claimed
     const requestStats = await Request.aggregate([
       { $match: { receiver: require('mongoose').Types.ObjectId(userId) } },
       {
         $group: {
           _id: null,
-          totalQuantity: { $sum: '$acceptedQuantity' },
+          totalQuantityReceived: { $sum: { $add: ['$acceptedQuantity', '$claimedQuantity'] } },
+          totalQuantityClaimed: { $sum: '$claimedQuantity' },
         },
       },
     ]);
@@ -151,13 +175,16 @@ router.get('/receiver/dashboard', protect, async (req, res) => {
       { $limit: 12 },
     ]);
 
+    const stats = requestStats[0] || {};
+
     res.json({
       success: true,
       analytics: {
         totalRequests,
         acceptedRequests,
         completedRequests,
-        totalQuantityReceived: requestStats[0]?.totalQuantity || 0,
+        totalQuantityReceived: stats.totalQuantityReceived || 0,
+        totalQuantityClaimed: stats.totalQuantityClaimed || 0,
         requestsByStatus,
         requestsByMonth,
       },

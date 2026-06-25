@@ -6,10 +6,10 @@ import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Create request
+// Create request (claim request)
 router.post('/', protect, authorize('receiver', 'admin'), async (req, res) => {
   try {
-    const { donationId, message, requestedQuantity } = req.body;
+    const { donationId, message, claimedQuantity } = req.body;
 
     const donation = await Donation.findById(donationId);
 
@@ -17,8 +17,18 @@ router.post('/', protect, authorize('receiver', 'admin'), async (req, res) => {
       return res.status(404).json({ message: 'Donation not found' });
     }
 
-    if (donation.status !== 'Pending') {
+    if (donation.status === 'Fully Claimed' || donation.status === 'Expired' || donation.status === 'Cancelled') {
       return res.status(400).json({ message: 'Donation is not available' });
+    }
+
+    if (!claimedQuantity || claimedQuantity <= 0) {
+      return res.status(400).json({ message: 'Please provide valid quantity' });
+    }
+
+    if (claimedQuantity > donation.remainingQuantity) {
+      return res.status(400).json({ 
+        message: `Requested quantity exceeds available stock. Available: ${donation.remainingQuantity} ${donation.unit}` 
+      });
     }
 
     const request = await Request.create({
@@ -26,7 +36,7 @@ router.post('/', protect, authorize('receiver', 'admin'), async (req, res) => {
       receiver: req.user.id,
       donor: donation.donor,
       message,
-      requestedQuantity: requestedQuantity || donation.quantity,
+      claimedQuantity,
     });
 
     await request.populate('donation donor receiver');
@@ -101,10 +111,10 @@ router.get('/donor/my-requests', protect, authorize('donor', 'admin'), async (re
   }
 });
 
-// Accept request
+// Accept request (donor approves the claim)
 router.post('/:id/accept', protect, authorize('donor', 'admin'), async (req, res) => {
   try {
-    const request = await Request.findById(req.params.id);
+    const request = await Request.findById(req.params.id).populate('donation receiver donor');
 
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
@@ -115,11 +125,16 @@ router.post('/:id/accept', protect, authorize('donor', 'admin'), async (req, res
     }
 
     request.status = 'Accepted';
-    request.acceptedQuantity = req.body.acceptedQuantity || request.requestedQuantity;
-    await request.save();
+    request.acceptedQuantity = req.body.acceptedQuantity || request.claimedQuantity;
 
-    // Update donation status
-    await Donation.findByIdAndUpdate(request.donation, { status: 'Accepted' });
+    // Check if accepted quantity exceeds remaining
+    if (request.acceptedQuantity > request.donation.remainingQuantity) {
+      return res.status(400).json({ 
+        message: `Accepted quantity exceeds available stock. Available: ${request.donation.remainingQuantity}` 
+      });
+    }
+
+    await request.save();
 
     res.json({ success: true, request });
   } catch (error) {
@@ -130,7 +145,7 @@ router.post('/:id/accept', protect, authorize('donor', 'admin'), async (req, res
 // Reject request
 router.post('/:id/reject', protect, authorize('donor', 'admin'), async (req, res) => {
   try {
-    const request = await Request.findById(req.params.id);
+    const request = await Request.findById(req.params.id).populate('donation');
 
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
@@ -149,10 +164,10 @@ router.post('/:id/reject', protect, authorize('donor', 'admin'), async (req, res
   }
 });
 
-// Complete request
+// Complete request (receiver has received the food)
 router.post('/:id/complete', protect, async (req, res) => {
   try {
-    const request = await Request.findById(req.params.id);
+    const request = await Request.findById(req.params.id).populate('donation receiver donor');
 
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
@@ -171,12 +186,22 @@ router.post('/:id/complete', protect, async (req, res) => {
     await request.save();
 
     // Update donation
-    await Donation.findByIdAndUpdate(request.donation, {
-      status: 'Completed',
-      completedAt: new Date(),
-    });
+    const donation = await Donation.findById(request.donation);
+    if (donation) {
+      donation.claimedQuantity = (donation.claimedQuantity || 0) + (request.acceptedQuantity || request.claimedQuantity);
+      donation.remainingQuantity = donation.totalQuantity - donation.claimedQuantity;
 
-    // Update user stats
+      if (donation.remainingQuantity === 0) {
+        donation.status = 'Fully Claimed';
+      } else if (donation.claimedQuantity > 0) {
+        donation.status = 'Partially Claimed';
+      }
+
+      donation.completedAt = new Date();
+      await donation.save();
+    }
+
+    // Update receiver stats
     await User.findByIdAndUpdate(request.receiver, { $inc: { totalReceived: 1 } });
 
     res.json({ success: true, request });

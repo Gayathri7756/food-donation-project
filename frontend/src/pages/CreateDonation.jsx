@@ -7,7 +7,7 @@ export default function CreateDonation() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     foodType: 'Cooked Food',
-    quantity: '',
+    totalQuantity: '',
     unit: 'kg',
     description: '',
     expiryDate: '',
@@ -89,8 +89,8 @@ export default function CreateDonation() {
               <div className="flex gap-2">
                 <input
                   type="number"
-                  name="quantity"
-                  value={formData.quantity}
+                  name="totalQuantity"
+                  value={formData.totalQuantity}
                   onChange={handleChange}
                   className="input-field flex-1"
                   placeholder="10"
@@ -105,6 +105,8 @@ export default function CreateDonation() {
                 >
                   <option value="kg">kg</option>
                   <option value="liters">liters</option>
+                  <option value="packs">packs</option>
+                  <option value="plates">plates</option>
                   <option value="pieces">pieces</option>
                   <option value="boxes">boxes</option>
                 </select>

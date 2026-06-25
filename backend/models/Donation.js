@@ -12,13 +12,21 @@ const donationSchema = new mongoose.Schema(
       required: [true, 'Please specify food type'],
       enum: ['Cooked Food', 'Raw Food', 'Packaged Food', 'Beverages', 'Bakery', 'Other'],
     },
-    quantity: {
+    totalQuantity: {
       type: Number,
       required: [true, 'Please specify quantity'],
     },
+    claimedQuantity: {
+      type: Number,
+      default: 0,
+    },
+    remainingQuantity: {
+      type: Number,
+      required: true,
+    },
     unit: {
       type: String,
-      enum: ['kg', 'liters', 'pieces', 'boxes'],
+      enum: ['kg', 'liters', 'packs', 'plates', 'pieces', 'boxes'],
       default: 'kg',
     },
     description: {
@@ -49,7 +57,7 @@ const donationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending', 'Accepted', 'Completed', 'Expired', 'Cancelled'],
+      enum: ['Pending', 'Partially Claimed', 'Fully Claimed', 'Expired', 'Cancelled'],
       default: 'Pending',
     },
     acceptedBy: {
@@ -57,6 +65,22 @@ const donationSchema = new mongoose.Schema(
       ref: 'User',
       default: null,
     },
+    claims: [
+      {
+        receiver: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        quantity: Number,
+        status: {
+          type: String,
+          enum: ['Pending', 'Accepted', 'Rejected', 'Completed'],
+          default: 'Pending',
+        },
+        claimedAt: Date,
+        completedAt: Date,
+      },
+    ],
     acceptedAt: Date,
     completedAt: Date,
     expiryAlertSent: {

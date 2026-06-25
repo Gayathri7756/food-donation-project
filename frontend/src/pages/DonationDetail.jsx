@@ -11,6 +11,7 @@ export default function DonationDetail() {
   const [donation, setDonation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [claimedQuantity, setClaimedQuantity] = useState('');
   const [requestMessage, setRequestMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -36,14 +37,22 @@ export default function DonationDetail() {
       return;
     }
 
+    if (!claimedQuantity || claimedQuantity <= 0) {
+      setError('Please enter a valid quantity');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await api.post('/requests', {
         donationId: id,
         message: requestMessage,
+        claimedQuantity: parseFloat(claimedQuantity),
       });
       alert('Request sent successfully!');
       setRequestMessage('');
+      setClaimedQuantity('');
+      fetchDonation();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send request');
     } finally {
@@ -124,14 +133,29 @@ export default function DonationDetail() {
 
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="glass rounded-lg p-4">
-                  <p className="text-gray-600 text-sm">Quantity</p>
+                  <p className="text-gray-600 text-sm">Total Quantity</p>
                   <p className="text-2xl font-bold text-primary-600">
-                    {donation.quantity} {donation.unit}
+                    {donation.totalQuantity} {donation.unit}
                   </p>
                 </div>
                 <div className="glass rounded-lg p-4">
-                  <p className="text-gray-600 text-sm">Food Type</p>
-                  <p className="text-2xl font-bold text-primary-600">{donation.foodType}</p>
+                  <p className="text-gray-600 text-sm">Remaining</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {donation.remainingQuantity} {donation.unit}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="glass rounded-lg p-4">
+                  <p className="text-gray-600 text-sm">Claimed</p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {donation.claimedQuantity} {donation.unit}
+                  </p>
+                </div>
+                <div className="glass rounded-lg p-4">
+                  <p className="text-gray-600 text-sm">Status</p>
+                  <p className="text-lg font-bold text-primary-600">{donation.status}</p>
                 </div>
               </div>
 
@@ -177,9 +201,9 @@ export default function DonationDetail() {
           </div>
 
           {/* Request Form */}
-          {token && user?.role === 'receiver' && donation.status === 'Pending' && (
+          {token && user?.role === 'receiver' && (donation.status === 'Pending' || donation.status === 'Partially Claimed') && donation.remainingQuantity > 0 && (
             <div className="card">
-              <h3 className="text-lg font-semibold mb-4">Request This Donation</h3>
+              <h3 className="text-lg font-semibold mb-4">Claim This Donation</h3>
 
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex gap-2">
@@ -190,17 +214,33 @@ export default function DonationDetail() {
 
               <form onSubmit={handleRequest} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Message</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Quantity to Claim (Max: {donation.remainingQuantity} {donation.unit})
+                  </label>
+                  <input
+                    type="number"
+                    value={claimedQuantity}
+                    onChange={(e) => setClaimedQuantity(e.target.value)}
+                    max={donation.remainingQuantity}
+                    step="0.1"
+                    className="input-field"
+                    placeholder={`0 - ${donation.remainingQuantity}`}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Message (Optional)</label>
                   <textarea
                     value={requestMessage}
                     onChange={(e) => setRequestMessage(e.target.value)}
                     className="input-field resize-none"
-                    rows="4"
+                    rows="3"
                     placeholder="Tell the donor why you need this food..."
                   />
                 </div>
                 <button type="submit" disabled={submitting} className="btn-primary w-full">
-                  {submitting ? 'Sending...' : 'Send Request'}
+                  {submitting ? 'Sending...' : 'Send Claim Request'}
                 </button>
               </form>
             </div>
@@ -224,9 +264,15 @@ export default function DonationDetail() {
             </div>
           )}
 
-          {donation.status !== 'Pending' && (
+          {donation.status !== 'Pending' && donation.status !== 'Partially Claimed' && (
             <div className="card bg-yellow-50 border-2 border-yellow-200">
               <p className="text-yellow-900">This donation is no longer available</p>
+            </div>
+          )}
+
+          {donation.remainingQuantity === 0 && (
+            <div className="card bg-gray-50 border-2 border-gray-200">
+              <p className="text-gray-700">All food has been claimed</p>
             </div>
           )}
         </div>
